@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>Træningslog</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --primary: #0f172a;
+      --primaryText: #ffffff;
+      --danger: #dc2626;
+      --soft: #f1f5f9;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 18px;
+      padding-bottom: 80px;
+    }
+
+    header {
+      display: flex;
+      gap: 12px;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 30px;
+      line-height: 1.1;
+    }
+
+    p {
+      color: var(--muted);
+      margin: 6px 0 0;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+      margin-bottom: 14px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .grid-2, .grid-3, .grid-5 {
+      grid-template-columns: 1fr;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    input, select {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      font: inherit;
+      background: white;
+      color: var(--text);
+      min-height: 46px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 14px;
+      min-height: 46px;
+      font: inherit;
+      font-weight: 750;
+      cursor: pointer;
+      background: var(--primary);
+      color: var(--primaryText);
+    }
+
+    button.secondary {
+      background: white;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    button.danger {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid #fecaca;
+      padding: 8px 10px;
+      min-height: 38px;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .set-row {
+      background: var(--soft);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 12px;
+    }
+
+    .set-title {
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .history-top {
+      display: grid;
+      gap: 10px;
+      margin: 18px 0 10px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    .entry {
+      display: grid;
+      gap: 10px;
+    }
+
+    .entry-main {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .entry-title {
+      font-weight: 850;
+      margin-bottom: 4px;
+    }
+
+    .entry-date {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+
+    .entry-line {
+      font-size: 14px;
+      margin: 4px 0;
+    }
+
+    .empty {
+      text-align: center;
+      color: var(--muted);
+      border-style: dashed;
+      padding: 30px 14px;
+    }
+
+    .hint {
+      background: #eff6ff;
+      color: #1e3a8a;
+      border: 1px solid #bfdbfe;
+      border-radius: 14px;
+      padding: 10px;
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+
+    @media (min-width: 720px) {
+      .grid-2 { grid-template-columns: 1fr 1fr; }
+      .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+      .grid-5 { grid-template-columns: repeat(5, 1fr); }
+      .actions { grid-template-columns: 1fr auto auto; }
+      .history-top {
+        grid-template-columns: 1fr 320px;
+        align-items: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <div>
+        <h1>Træningslog</h1>
+        <p>3 runder pr. øvelse – og appen husker sidste gang.</p>
+      </div>
+    </header>
+
+    <section class="card">
+      <div id="previousHint" class="hint" style="display:none;"></div>
+
+      <div class="grid grid-2">
+        <label>
+          Dato
+          <input id="date" type="date" />
+        </label>
+
+        <label>
+          Øvelse
+          <select id="exercise"></select>
+        </label>
+      </div>
+
+      <div id="strengthFields" class="grid" style="margin-top:12px;"></div>
+
+      <div id="sameTempoFields" class="grid grid-3" style="display:none; margin-top:12px;">
+        <label>
+          Hastighed (km/t)
+          <input id="sameSpeed" inputmode="decimal" placeholder="fx 8,5" />
+        </label>
+        <label>
+          Tid
+          <input id="sameTime" placeholder="fx 20 min" />
+        </label>
+        <label>
+          Km
+          <input id="sameDistance" inputmode="decimal" placeholder="fx 3,0" />
+        </label>
+      </div>
+
+      <div id="intervalFields" class="grid grid-5" style="display:none; margin-top:12px;">
+        <label>
+          Hvile hastighed
+          <input id="restSpeed" inputmode="decimal" placeholder="km/t" />
+        </label>
+        <label>
+          Antal intervaller
+          <input id="intervalCount" type="number" min="0" placeholder="fx 10" />
+        </label>
+        <label>
+          Start hastighed
+          <input id="startSpeed" inputmode="decimal" placeholder="km/t" />
+        </label>
+        <label>
+          Slut hastighed
+          <input id="endSpeed" inputmode="decimal" placeholder="km/t" />
+        </label>
+        <label>
+          Tid
+          <input id="intervalTime" placeholder="fx 30 sek" />
+        </label>
+      </div>
+
+      <div class="actions">
+        <button id="saveBtn">Gem træning for denne øvelse</button>
+        <button id="clearBtn" class="secondary">Ryd felter</button>
+        <button id="exportBtn" class="secondary">Eksportér CSV</button>
+      </div>
+    </section>
+
+    <section class="history-top">
+      <h2>Tidligere træninger</h2>
+      <select id="filter"></select>
+    </section>
+
+    <section id="history"></section>
+  </main>
+
+  <script>
+    const exercises = [
+      "Flad Bænkpres med Håndvægte",
+      "Mountain walk",
+      "Løft ben",
+      "Øverste mavemuskler",
+      "Triceps over hovedet en vægt",
+      "Skulderpres (Dumbbell Overhead Press)",
+      "Biceps siddende. Hammer curls",
+      "Dumbbell lateral raise (side løft håndvægte)",
+      "Leg curl (baglår)",
+      "Leg extension (forlår)",
+      "Tåhævninger",
+      "Adductor Maskine (indvendig / samle ben)",
+      "Adductor Maskine (udvendig / sprede ben)",
+      "Løb alm samme tempo",
+      "Løb interval"
+    ];
+
+    const $ = (id) => document.getElementById(id);
+    const today = new Date().toISOString().slice(0, 10);
+
+    let entries = JSON.parse(localStorage.getItem("traeningslog") || "[]");
+
+    function saveEntries() {
+      localStorage.setItem("traeningslog", JSON.stringify(entries));
+    }
+
+    function emptySets() {
+      return [
+        { weight: "", reps: "" },
+        { weight: "", reps: "" },
+        { weight: "", reps: "" }
+      ];
+    }
+
+    function populateSelects() {
+      $("exercise").innerHTML = exercises.map(ex => `<option>${ex}</option>`).join("");
+      $("filter").innerHTML = `<option>Alle</option>` + exercises.map(ex => `<option>${ex}</option>`).join("");
+      $("date").value = today;
+    }
+
+    function renderStrengthFields() {
+      $("strengthFields").innerHTML = [0, 1, 2].map(i => `
+        <div class="set-row">
+          <div class="set-title">Runde ${i + 1}</div>
+          <div class="grid grid-2">
+            <label>
+              Vægt (kg)
+              <input id="weight${i}" inputmode="decimal" placeholder="fx 20" />
+            </label>
+            <label>
+              Gentagelser
+              <input id="reps${i}" type="number" min="0" placeholder="fx 12" />
+            </label>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function currentExercise() {
+      return $("exercise").value;
+    }
+
+    function isSameTempoRun(ex = currentExercise()) {
+      return ex === "Løb alm samme tempo";
+    }
+
+    function isIntervalRun(ex = currentExercise()) {
+      return ex === "Løb interval";
+    }
+
+    function isRun(ex = currentExercise()) {
+      return isSameTempoRun(ex) || isIntervalRun(ex);
+    }
+
+    function findPreviousEntry(ex) {
+      return entries
+        .filter(e => e.exercise === ex)
+        .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+    }
+
+    function setStrengthValues(sets) {
+      const safeSets = sets && sets.length ? sets : emptySets();
+      for (let i = 0; i < 3; i++) {
+        $("weight" + i).value = safeSets[i]?.weight || "";
+        $("reps" + i).value = safeSets[i]?.reps || "";
+      }
+    }
+
+    function clearFields() {
+      setStrengthValues(emptySets());
+      $("sameSpeed").value = "";
+      $("sameTime").value = "";
+      $("sameDistance").value = "";
+      $("restSpeed").value = "";
+      $("intervalCount").value = "";
+      $("startSpeed").value = "";
+      $("endSpeed").value = "";
+      $("intervalTime").value = "";
+      $("previousHint").style.display = "none";
+    }
+
+    function loadPreviousValues() {
+      const ex = currentExercise();
+      const previous = findPreviousEntry(ex);
+
+      $("strengthFields").style.display = isRun(ex) ? "none" : "grid";
+      $("sameTempoFields").style.display = isSameTempoRun(ex) ? "grid" : "none";
+      $("intervalFields").style.display = isIntervalRun(ex) ? "grid" : "none";
+
+      clearFields();
+
+      if (!previous) return;
+
+      $("previousHint").textContent = "Felterne er udfyldt med sidste træning for denne øvelse: " + previous.date;
+      $("previousHint").style.display = "block";
+
+      if (isSameTempoRun(ex)) {
+        $("sameSpeed").value = previous.runSameTempo?.speed || "";
+        $("sameTime").value = previous.runSameTempo?.time || "";
+        $("sameDistance").value = previous.runSameTempo?.distance || "";
+      } else if (isIntervalRun(ex)) {
+        $("restSpeed").value = previous.runInterval?.restSpeed || "";
+        $("intervalCount").value = previous.runInterval?.intervalCount || "";
+        $("startSpeed").value = previous.runInterval?.startSpeed || "";
+        $("endSpeed").value = previous.runInterval?.endSpeed || "";
+        $("intervalTime").value = previous.runInterval?.time || "";
+      } else {
+        setStrengthValues(previous.sets || emptySets());
+      }
+    }
+
+    function getStrengthValues() {
+      return [0, 1, 2].map(i => ({
+        weight: $("weight" + i).value.trim(),
+        reps: $("reps" + i).value.trim()
+      }));
+    }
+
+    function addEntry() {
+      const ex = currentExercise();
+
+      const entry = {
+        id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+        date: $("date").value || today,
+        exercise: ex,
+        sets: isRun(ex) ? [] : getStrengthValues(),
+        runSameTempo: isSameTempoRun(ex) ? {
+          speed: $("sameSpeed").value.trim(),
+          time: $("sameTime").value.trim(),
+          distance: $("sameDistance").value.trim()
+        } : null,
+        runInterval: isIntervalRun(ex) ? {
+          restSpeed: $("restSpeed").value.trim(),
+          intervalCount: $("intervalCount").value.trim(),
+          startSpeed: $("startSpeed").value.trim(),
+          endSpeed: $("endSpeed").value.trim(),
+          time: $("intervalTime").value.trim()
+        } : null
+      };
+
+      entries = [entry, ...entries];
+      saveEntries();
+      renderHistory();
+      $("previousHint").textContent = "Gemt. Næste gang du vælger øvelsen, foreslås disse værdier.";
+      $("previousHint").style.display = "block";
+    }
+
+    function deleteEntry(id) {
+      if (!confirm("Slet denne træning?")) return;
+      entries = entries.filter(e => e.id !== id);
+      saveEntries();
+      renderHistory();
+      loadPreviousValues();
+    }
+
+    function entryDetails(e) {
+      if (e.exercise === "Løb alm samme tempo") {
+        return `${e.runSameTempo?.speed || "-"} km/t · ${e.runSameTempo?.time || "-"} · ${e.runSameTempo?.distance || "-"} km`;
+      }
+
+      if (e.exercise === "Løb interval") {
+        return `Hvile ${e.runInterval?.restSpeed || "-"} km/t · ${e.runInterval?.intervalCount || "-"} intervaller · ${e.runInterval?.startSpeed || "-"}-${e.runInterval?.endSpeed || "-"} km/t · ${e.runInterval?.time || "-"}`;
+      }
+
+      return (e.sets || []).map((set, i) =>
+        `<div class="entry-line">Runde ${i + 1}: ${set.weight || "-"} kg · ${set.reps || "-"} reps</div>`
+      ).join("");
+    }
+
+    function renderHistory() {
+      const filter = $("filter").value;
+      const list = entries
+        .filter(e => filter === "Alle" || e.exercise === filter)
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      if (!list.length) {
+        $("history").innerHTML = `<div class="card empty">Ingen træninger endnu.</div>`;
+        return;
+      }
+
+      $("history").innerHTML = list.map(e => `
+        <article class="card entry">
+          <div class="entry-main">
+            <div>
+              <div class="entry-title">${escapeHtml(e.exercise)}</div>
+              <div class="entry-date">${escapeHtml(e.date)}</div>
+              <div>${entryDetails(e)}</div>
+            </div>
+            <button class="danger" onclick="deleteEntry('${e.id}')">Slet</button>
+          </div>
+        </article>
+      `).join("");
+    }
+
+    function exportCsv() {
+      const rows = [
+        [
+          "Dato", "Øvelse",
+          "Sæt 1 vægt", "Sæt 1 reps",
+          "Sæt 2 vægt", "Sæt 2 reps",
+          "Sæt 3 vægt", "Sæt 3 reps",
+          "Løb hastighed", "Løb tid", "Løb km",
+          "Hvile hastighed", "Antal intervaller", "Start hastighed", "Slut hastighed", "Interval tid"
+        ],
+        ...entries.map(e => [
+          e.date,
+          e.exercise,
+          e.sets?.[0]?.weight || "",
+          e.sets?.[0]?.reps || "",
+          e.sets?.[1]?.weight || "",
+          e.sets?.[1]?.reps || "",
+          e.sets?.[2]?.weight || "",
+          e.sets?.[2]?.reps || "",
+          e.runSameTempo?.speed || "",
+          e.runSameTempo?.time || "",
+          e.runSameTempo?.distance || "",
+          e.runInterval?.restSpeed || "",
+          e.runInterval?.intervalCount || "",
+          e.runInterval?.startSpeed || "",
+          e.runInterval?.endSpeed || "",
+          e.runInterval?.time || ""
+        ])
+      ];
+
+      const csv = rows.map(row => row.map(value =>
+        `"${String(value ?? "").replaceAll('"', '""')}"`
+      ).join(";")).join("\n");
+
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "traeningslog.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    populateSelects();
+    renderStrengthFields();
+    loadPreviousValues();
+    renderHistory();
+
+    $("exercise").addEventListener("change", loadPreviousValues);
+    $("filter").addEventListener("change", renderHistory);
+    $("saveBtn").addEventListener("click", addEntry);
+    $("clearBtn").addEventListener("click", clearFields);
+    $("exportBtn").addEventListener("click", exportCsv);
+  </script>
+</body>
+</html>
