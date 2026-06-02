@@ -514,6 +514,66 @@
       color-scheme: dark;
     }
 
+
+    .progress-card-button {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: 54px 1fr 24px;
+      gap: 12px;
+      align-items: center;
+      width: 100%;
+      min-height: 82px;
+      padding: 12px;
+      border-radius: 22px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: linear-gradient(180deg, rgba(15,19,26,0.92), rgba(7,10,15,0.96));
+      color: var(--text);
+      box-shadow: var(--shadow);
+      text-align: left;
+    }
+    .progress-icon {
+      width: 54px;
+      height: 54px;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      background: rgba(119,224,60,0.10);
+      border: 1px solid rgba(119,224,60,0.22);
+      color: var(--green);
+    }
+    .progress-icon svg { width: 30px; height: 30px; stroke: currentColor; }
+    .progress-title { display:block; font-size:16px; font-weight:900; margin-bottom:3px; }
+    .progress-sub { display:block; font-size:13px; color:var(--muted); line-height:1.25; }
+    .chart-wrap {
+      width: 100%;
+      overflow: hidden;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(5,8,12,0.70);
+      padding: 10px;
+    }
+    #progressChart { width: 100%; height: 280px; display: block; }
+    .progress-summary { display: grid; gap: 10px; margin-top: 12px; }
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      color: #dbe4f1;
+      font-size: 14px;
+    }
+    .summary-row strong { color:#fff; }
+
+
+    .progress-tabs{display:grid;grid-template-columns:1fr 1fr;border:1px solid rgba(119,224,60,.35);border-radius:16px;overflow:hidden;margin:10px 0 12px;background:rgba(8,12,17,.72)}
+    .progress-tab{min-height:46px;border:0;border-radius:0;background:transparent;color:#d1d5db;box-shadow:none;font-weight:900}
+    .progress-tab.active{background:rgba(119,224,60,.14);color:var(--green);box-shadow:inset 0 0 0 1px rgba(119,224,60,.55)}
+    .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+    .stat-card{border-radius:18px;border:1px solid rgba(255,255,255,.08);background:rgba(7,10,15,.75);padding:12px;min-height:82px}
+    .stat-label{color:var(--muted);font-size:12px;margin-bottom:6px}
+    .stat-value{color:#fff;font-size:20px;font-weight:900}
+
     @media (max-width: 460px) {
       .wrap { padding: 14px; }
       .brand { font-size: 32px; }
@@ -656,6 +716,54 @@
         <div class="dual-buttons">
           <button id="saveBtn" class="action-button">＋ Gem / opdater</button>
           <button id="clearBtn" class="secondary">Ryd felter</button>
+        </div>
+
+        <button id="progressBtn" class="progress-card-button" type="button">
+          <span class="progress-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+              <path d="M4 19V9"></path><path d="M10 19V5"></path><path d="M16 19v-8"></path><path d="M22 19v-4"></path>
+            </svg>
+          </span>
+          <span>
+            <span class="progress-title">Se dine fremskridt</span>
+            <span class="progress-sub">Samlet kilo løftet pr. øvelse over tid.</span>
+          </span>
+          <span style="font-size:28px;color:var(--green);">›</span>
+        </button>
+      </section>
+    </section>
+
+    <section id="progressScreen" class="screen">
+      <section class="card">
+        <div class="card-title">
+          <svg class="mini-icon" viewBox="0 0 24 24" fill="none" stroke-width="2">
+            <path d="M4 19V9"></path><path d="M10 19V5"></path><path d="M16 19v-8"></path><path d="M22 19v-4"></path>
+          </svg>
+          <span>Overblik</span>
+        </div>
+
+        <div class="progress-tabs">
+          <button id="strengthProgressTab" type="button" class="progress-tab active">Styrketræning</button>
+          <button id="runProgressTab" type="button" class="progress-tab">Løb</button>
+        </div>
+
+        <div class="grid" style="margin-bottom:12px;">
+          <label>Vælg øvelse
+            <div class="field-shell">
+              <select id="progressExercise"></select>
+              <span class="field-end">⌄</span>
+            </div>
+          </label>
+        </div>
+
+        <div class="chart-wrap">
+          <canvas id="progressChart" width="760" height="360"></canvas>
+        </div>
+
+        <div id="progressSummary" class="progress-summary"></div>
+
+        <div class="dual-buttons">
+          <button type="button" class="secondary" onclick="setTab('input')">Tilbage til indtastning</button>
         </div>
       </section>
     </section>
@@ -831,6 +939,7 @@
       const options = exerciseSettings.map(ex => `<option>${escapeHtml(ex.name)}</option>`).join("");
       $("exercise").innerHTML = options;
       $("filter").innerHTML = `<option>Alle</option>` + options;
+      populateProgressExerciseOptions();
       if (!$("date").value) $("date").value = today;
     }
 
@@ -987,6 +1096,7 @@
 
       saveEntries();
       renderHistory();
+      if ($("progressScreen").classList.contains("active")) renderProgress();
     }
 
     function clearSet(index) {
@@ -1213,14 +1323,211 @@
       URL.revokeObjectURL(url);
     }
 
+
+
+    let progressMode = "strength";
+
+    function populateProgressExerciseOptions() {
+      const select = $("progressExercise");
+      if (!select) return;
+      const list = exerciseSettings.filter(ex => {
+        if (progressMode === "strength") return ex.template === "strength";
+        return ex.template === "sameTempo" || ex.template === "interval";
+      });
+      const oldValue = select.value;
+      select.innerHTML = list.map(ex => `<option>${escapeHtml(ex.name)}</option>`).join("");
+      if ([...select.options].some(o => o.value === oldValue)) select.value = oldValue;
+    }
+
+    function getVolumeForEntry(entry) {
+      return (entry.sets || []).reduce((sum, set) => {
+        const weight = normalizeDecimal(set.weight);
+        const reps = normalizeDecimal(set.reps);
+        if (!weight || !reps || Number.isNaN(weight) || Number.isNaN(reps)) return sum;
+        return sum + weight * reps;
+      }, 0);
+    }
+
+    function getRunSpeed(entry) {
+      if (entry.runSameTempo) {
+        const speed = normalizeDecimal(entry.runSameTempo.speed);
+        if (speed && !Number.isNaN(speed)) return speed;
+        const distance = normalizeDecimal(entry.runSameTempo.distance);
+        const hours = parseTimeToHours(entry.runSameTempo.time);
+        if (distance && hours && !Number.isNaN(distance) && !Number.isNaN(hours)) return distance / hours;
+      }
+      if (entry.runInterval) {
+        const start = normalizeDecimal(entry.runInterval.startSpeed);
+        const end = normalizeDecimal(entry.runInterval.endSpeed);
+        if (start && end && !Number.isNaN(start) && !Number.isNaN(end)) return (start + end) / 2;
+        if (end && !Number.isNaN(end)) return end;
+        if (start && !Number.isNaN(start)) return start;
+      }
+      return 0;
+    }
+
+    function getRunDistance(entry) {
+      if (entry.runSameTempo) {
+        const distance = normalizeDecimal(entry.runSameTempo.distance);
+        if (distance && !Number.isNaN(distance)) return distance;
+      }
+      return 0;
+    }
+
+    function getRunTime(entry) {
+      if (entry.runSameTempo) return entry.runSameTempo.time || "-";
+      if (entry.runInterval) return entry.runInterval.time || "-";
+      return "-";
+    }
+
+    function getStrengthProgressData(exerciseName) {
+      const byDate = {};
+      entries.filter(e => e.exercise === exerciseName && entryTemplate(e) === "strength").forEach(e => {
+        const volume = getVolumeForEntry(e);
+        if (volume) byDate[e.date] = (byDate[e.date] || 0) + volume;
+      });
+      return Object.keys(byDate).sort((a,b)=>new Date(a)-new Date(b)).map(date => ({date, value: byDate[date]}));
+    }
+
+    function getRunProgressData(exerciseName) {
+      return entries.filter(e => e.exercise === exerciseName && entryTemplate(e) !== "strength")
+        .map(e => ({date:e.date, value:getRunSpeed(e), distance:getRunDistance(e), time:getRunTime(e)}))
+        .filter(p => p.value)
+        .sort((a,b)=>new Date(a.date)-new Date(b.date));
+    }
+
+    function formatKg(v) { return Math.round(v).toLocaleString("da-DK") + " kg"; }
+    function formatSpeed(v) { return v.toFixed(1).replace(".", ",") + " km/t"; }
+    function formatDistance(v) { return v ? v.toFixed(2).replace(".", ",") + " km" : "-"; }
+
+    function setProgressMode(mode) {
+      progressMode = mode;
+      $("strengthProgressTab").classList.toggle("active", mode === "strength");
+      $("runProgressTab").classList.toggle("active", mode === "run");
+      populateProgressExerciseOptions();
+      renderProgress();
+    }
+
+    function drawLineChart(data, options) {
+      const canvas = $("progressChart");
+      const ctx = canvas.getContext("2d");
+      const width = canvas.width, height = canvas.height;
+      ctx.clearRect(0,0,width,height);
+      ctx.fillStyle = "#05080c";
+      ctx.fillRect(0,0,width,height);
+      const pad = {left:72,right:24,top:34,bottom:62};
+      const chartW = width-pad.left-pad.right, chartH = height-pad.top-pad.bottom;
+      ctx.strokeStyle = "rgba(255,255,255,0.10)";
+      ctx.lineWidth = 1;
+      for (let i=0;i<=4;i++) {
+        const y = pad.top + chartH/4*i;
+        ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(width-pad.right,y); ctx.stroke();
+      }
+      if (!data.length) {
+        ctx.fillStyle = "#94a3b8"; ctx.textAlign = "center";
+        ctx.font = "24px -apple-system, BlinkMacSystemFont, Segoe UI, Arial";
+        ctx.fillText(options.emptyTitle, width/2, height/2-8);
+        ctx.font = "18px -apple-system, BlinkMacSystemFont, Segoe UI, Arial";
+        ctx.fillText(options.emptyText, width/2, height/2+24);
+        return;
+      }
+      const maxValue = Math.max(...data.map(d=>d.value));
+      const yMax = options.roundMax(maxValue);
+      ctx.textAlign = "right"; ctx.font = "16px -apple-system, BlinkMacSystemFont, Segoe UI, Arial"; ctx.fillStyle = "#94a3b8";
+      for (let i=0;i<=4;i++) {
+        const value = yMax - yMax/4*i;
+        const y = pad.top + chartH/4*i + 5;
+        ctx.fillText(options.axisFormat(value), pad.left-10, y);
+      }
+      const xFor = i => data.length === 1 ? pad.left + chartW/2 : pad.left + chartW/(data.length-1)*i;
+      const yFor = v => pad.top + chartH - (v/yMax)*chartH;
+      const gradient = ctx.createLinearGradient(0,pad.top,0,pad.top+chartH);
+      gradient.addColorStop(0,"rgba(119,224,60,0.34)");
+      gradient.addColorStop(1,"rgba(119,224,60,0.02)");
+      ctx.beginPath();
+      data.forEach((p,i)=>{ const x=xFor(i), y=yFor(p.value); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); });
+      ctx.lineTo(xFor(data.length-1), pad.top+chartH); ctx.lineTo(xFor(0), pad.top+chartH); ctx.closePath();
+      ctx.fillStyle = gradient; ctx.fill();
+      ctx.strokeStyle = "#77e03c"; ctx.lineWidth = 4; ctx.beginPath();
+      data.forEach((p,i)=>{ const x=xFor(i), y=yFor(p.value); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); });
+      ctx.stroke();
+      data.forEach((p,i)=>{ 
+        const x=xFor(i), y=yFor(p.value);
+        ctx.fillStyle="#77e03c"; ctx.beginPath(); ctx.arc(x,y,7,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle="#d9f9c7"; ctx.font="15px -apple-system, BlinkMacSystemFont, Segoe UI, Arial"; ctx.textAlign="center";
+        ctx.fillText(options.pointFormat(p.value), x, y-13);
+      });
+      ctx.fillStyle="#94a3b8"; ctx.font="15px -apple-system, BlinkMacSystemFont, Segoe UI, Arial"; ctx.textAlign="center";
+      data.forEach((p,i)=>{ const label = p.date.slice(5).split("-").reverse().join("/"); ctx.fillText(label, xFor(i), height-26); });
+    }
+
+    function renderProgress() {
+      const select = $("progressExercise");
+      if (!select) return;
+      if (!select.options.length) {
+        $("progressSummary").innerHTML = `<div class="empty">Ingen øvelser i denne kategori.</div>`;
+        drawLineChart([], {emptyTitle:"Ingen øvelser", emptyText:"Tilføj en øvelse under Indstillinger.", roundMax:()=>100, axisFormat:v=>String(v), pointFormat:v=>String(v)});
+        return;
+      }
+      if (!select.value) select.value = select.options[0].value;
+
+      if (progressMode === "strength") {
+        const data = getStrengthProgressData(select.value);
+        drawLineChart(data, {
+          emptyTitle:"Ingen styrkedata endnu",
+          emptyText:"Gem en styrketræning for at se fremskridt.",
+          roundMax:max=>Math.max(100, Math.ceil(max/100)*100),
+          axisFormat:v=>Math.round(v).toLocaleString("da-DK"),
+          pointFormat:v=>Math.round(v).toLocaleString("da-DK")
+        });
+        if (!data.length) { $("progressSummary").innerHTML = ""; return; }
+        const total = data.reduce((s,p)=>s+p.value,0);
+        const best = data.reduce((a,b)=>a.value>b.value?a:b);
+        const avg = total/data.length;
+        $("progressSummary").innerHTML = `
+          <div class="stat-grid">
+            <div class="stat-card"><div class="stat-label">Gns. pr. dag</div><div class="stat-value">${formatKg(avg)}</div></div>
+            <div class="stat-card"><div class="stat-label">Bedste dag</div><div class="stat-value">${formatKg(best.value)}</div></div>
+            <div class="stat-card"><div class="stat-label">Træninger</div><div class="stat-value">${data.length}</div></div>
+            <div class="stat-card"><div class="stat-label">Total løftet</div><div class="stat-value">${formatKg(total)}</div></div>
+          </div>`;
+      } else {
+        const data = getRunProgressData(select.value);
+        drawLineChart(data, {
+          emptyTitle:"Ingen løbedata endnu",
+          emptyText:"Gem en løbetræning for at se fremskridt.",
+          roundMax:max=>Math.max(5, Math.ceil(max+1)),
+          axisFormat:v=>v.toFixed(0),
+          pointFormat:v=>v.toFixed(1).replace(".", ",")
+        });
+        if (!data.length) { $("progressSummary").innerHTML = ""; return; }
+        const totalDistance = data.reduce((s,p)=>s+(p.distance||0),0);
+        const best = data.reduce((a,b)=>a.value>b.value?a:b);
+        const avgSpeed = data.reduce((s,p)=>s+p.value,0)/data.length;
+        const latest = data[data.length-1];
+        $("progressSummary").innerHTML = `
+          <div class="stat-grid">
+            <div class="stat-card"><div class="stat-label">Gns. hastighed</div><div class="stat-value">${formatSpeed(avgSpeed)}</div></div>
+            <div class="stat-card"><div class="stat-label">Bedste hastighed</div><div class="stat-value">${formatSpeed(best.value)}</div></div>
+            <div class="stat-card"><div class="stat-label">Samlet distance</div><div class="stat-value">${formatDistance(totalDistance)}</div></div>
+            <div class="stat-card"><div class="stat-label">Seneste tid</div><div class="stat-value">${latest.time || "-"}</div></div>
+          </div>`;
+      }
+    }
+
     function setTab(tab) {
       document.querySelectorAll(".tab").forEach(btn => {
         btn.classList.toggle("active", btn.dataset.tab === tab);
       });
 
       $("inputScreen").classList.toggle("active", tab === "input");
+      $("progressScreen").classList.toggle("active", tab === "progress");
       $("logScreen").classList.toggle("active", tab === "log");
       $("settingsScreen").classList.toggle("active", tab === "settings");
+      if (tab === "progress") {
+        populateProgressExerciseOptions();
+        renderProgress();
+      }
     }
 
     function slugId(value) {
@@ -1262,6 +1569,10 @@
     $("resetDefaultsBtn").addEventListener("click", resetDefaultExercises);
     $("sameTime").addEventListener("input", calculateSpeed);
     $("sameDistance").addEventListener("input", calculateSpeed);
+    $("progressBtn").addEventListener("click", () => setTab("progress"));
+    if ($("progressExercise")) $("progressExercise").addEventListener("change", renderProgress);
+    if ($("strengthProgressTab")) $("strengthProgressTab").addEventListener("click", () => setProgressMode("strength"));
+    if ($("runProgressTab")) $("runProgressTab").addEventListener("click", () => setProgressMode("run"));
 
     document.querySelectorAll(".tab").forEach(btn => {
       btn.addEventListener("click", () => setTab(btn.dataset.tab));
